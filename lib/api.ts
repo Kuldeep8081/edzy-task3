@@ -19,27 +19,28 @@ export const fetchQuizQuestions = async (config: QuizConfig): Promise<Question[]
     throw new Error(data.message || "Failed to fetch questions");
   }
 
-  // Transform the complex API data into our simple UI format
   return data.data.questions.map((raw) => {
     
-    // 1. Get the list of option texts
-    const options = raw.optionOrdering.map(opt => opt.text);
+    // 1. Get options
+    const optionsList = raw.optionOrdering || [];
+    const options = optionsList.map(opt => opt.text);
 
-    // 2. Find the correct answer text
-    // The API gives us the ID of the correct option in 'raw.questionInfo.option'
-    // We need to find the matching object in 'optionOrdering' to get its text.
-    const correctOptionObj = raw.optionOrdering.find(
-      (opt) => opt._id === raw.questionInfo.option
+    // 2. Find correct answer text
+    const correctOptionObj = optionsList.find(
+      (opt) => opt._id === raw.questionInfo?.option
     );
-
-    // Safety fallback: if ID matching fails, default to empty string
     const correctAnswer = correctOptionObj ? correctOptionObj.text : "";
+
+    // 3. Get Solution Text (Explanation)
+    // Fallback to a default message if missing
+    const solutionText = raw.questionInfo?.solution || "No explanation provided.";
 
     return {
       id: raw._id,
       question: raw.text,
       options: options,
-      correctAnswer: correctAnswer
+      correctAnswer: correctAnswer,
+      solution: solutionText // <--- PASS THIS
     };
   });
 };

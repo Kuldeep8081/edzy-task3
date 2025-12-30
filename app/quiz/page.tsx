@@ -9,17 +9,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertCircle, CheckCircle2, XCircle, Timer, RotateCcw, Trophy, Target, Clock, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, XCircle, Timer, RotateCcw, Trophy, Target, Clock, AlertTriangle, Lightbulb, PlayCircle, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// --- Helper for Timer Display ---
+// Helper for Timer Display
 function formatTime(seconds: number) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
-// --- 1. Isolate the Logic in a Sub-Component ---
 function QuizContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -35,8 +34,6 @@ function QuizContent() {
   });
   
   const quiz = useQuiz({ questions });
-
-  // --- RENDER STATES ---
 
   if (isLoading) {
     return (
@@ -61,14 +58,13 @@ function QuizContent() {
     );
   }
 
-  // --- UPDATED SUMMARY SCREEN ---
+  // --- SUMMARY SCREEN ---
   if (quiz.isCompleted) {
-    // Calculate Accuracy
     const accuracy = Math.round((quiz.score / quiz.totalQuestions) * 100);
 
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <Card className="w-full max-w-md text-center shadow-xl">
+        <Card className="w-full max-w-md text-center shadow-xl animate-in fade-in zoom-in-95 duration-300">
           <CardHeader>
             <div className="mx-auto bg-green-100 p-4 rounded-full mb-4">
                <Trophy className="h-12 w-12 text-green-600" />
@@ -77,39 +73,29 @@ function QuizContent() {
             <p className="text-slate-500">Here is how you performed</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* 4-Grid Layout for Stats */}
             <div className="grid grid-cols-2 gap-4">
-                
-                {/* Score */}
                 <div className="bg-blue-50 p-4 rounded-lg flex flex-col items-center justify-center gap-1">
                     <p className="text-xs uppercase text-blue-600 font-semibold tracking-wider">Score</p>
                     <p className="text-2xl font-bold text-blue-900">{quiz.score} / {quiz.totalQuestions}</p>
                 </div>
-
-                {/* Accuracy */}
                 <div className="bg-green-50 p-4 rounded-lg flex flex-col items-center justify-center gap-1">
                     <div className="flex items-center gap-1 text-xs uppercase text-green-600 font-semibold tracking-wider">
                         <Target className="h-3 w-3" /> Accuracy
                     </div>
                     <p className="text-2xl font-bold text-green-900">{accuracy}%</p>
                 </div>
-
-                {/* Time Spent */}
                 <div className="bg-purple-50 p-4 rounded-lg flex flex-col items-center justify-center gap-1">
                     <div className="flex items-center gap-1 text-xs uppercase text-purple-600 font-semibold tracking-wider">
                         <Clock className="h-3 w-3" /> Time Spent
                     </div>
                     <p className="text-2xl font-bold text-purple-900">{formatTime(quiz.totalTime)}</p>
                 </div>
-
-                {/* Incorrect Attempts */}
                 <div className="bg-red-50 p-4 rounded-lg flex flex-col items-center justify-center gap-1">
                      <div className="flex items-center gap-1 text-xs uppercase text-red-600 font-semibold tracking-wider">
                         <AlertTriangle className="h-3 w-3" /> Mistakes
                     </div>
                     <p className="text-2xl font-bold text-red-900">{quiz.incorrectAttempts}</p>
                 </div>
-
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3">
@@ -123,17 +109,28 @@ function QuizContent() {
     );
   }
 
-  // Main Quiz UI
-  const { currentQuestion, isAnswerCorrect, selectedAnswer } = quiz;
+  // --- MAIN QUIZ UI ---
+  const { currentQuestion, status, selectedAnswer, timeLeft } = quiz;
   const progressPercentage = ((quiz.currentIndex + 1) / quiz.totalQuestions) * 100;
 
   if (!currentQuestion) return null;
+
+  // Visual Helper States
+  const isTimeUp = status === 'time_up';
+  const isCorrect = status === 'correct';
+  const isWrong = status === 'wrong';
+  const isSubmitted = isCorrect || isWrong;
+  const isLocked = isSubmitted || isTimeUp;
+
+  // Timer Color Logic
+  const timerVariant = timeLeft <= 10 ? "destructive" : "secondary";
+  const timerBg = timeLeft <= 10 ? "bg-red-100 text-red-700" : "";
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 flex flex-col items-center">
       <div className="w-full max-w-2xl space-y-6">
         
-        {/* Header: Progress & Timer */}
+        {/* Header */}
         <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
             <div className="flex flex-col gap-1 w-1/2">
                 <span className="text-sm font-medium text-slate-500">
@@ -141,46 +138,58 @@ function QuizContent() {
                 </span>
                 <Progress value={progressPercentage} className="h-2" />
             </div>
-            <Badge variant="secondary" className="px-3 py-1 flex gap-2 text-lg">
+            {/* Timer Badge */}
+            <Badge variant={timerVariant} className={cn("px-3 py-1 flex gap-2 text-lg transition-colors", timerBg)}>
                 <Timer className="h-4 w-4" /> 
-                {formatTime(quiz.timeElapsed)}
+                {formatTime(timeLeft)}
             </Badge>
         </div>
 
         {/* Question Card */}
-        <Card className="shadow-md border-0">
+        <Card className="shadow-md border-0 transition-all duration-300">
           <CardContent className="pt-6">
              <h2 className="text-xl font-semibold text-slate-800 mb-6 leading-relaxed">
                 {currentQuestion.question}
              </h2>
 
+             {/* Options List */}
              <div className="space-y-3">
                 {currentQuestion.options.map((option, index) => {
                     const isSelected = selectedAnswer === option;
+                    
+                    // Default Styles
                     let variantClass = "border-slate-200 hover:bg-slate-50"; 
                     let icon = null;
                     let numberClass = "bg-slate-100 text-slate-600";
 
-                    if (isSelected) {
-                        if (isAnswerCorrect) {
-                            variantClass = "border-green-500 bg-green-50 text-green-700";
-                            numberClass = "bg-green-200 text-green-800";
-                            icon = <CheckCircle2 className="h-5 w-5 text-green-600" />;
-                        } else {
-                            variantClass = "border-red-500 bg-red-50 text-red-700";
-                            numberClass = "bg-red-200 text-red-800";
-                            icon = <XCircle className="h-5 w-5 text-red-600" />;
-                        }
-                    } 
-                    
+                    // Styling Logic based on Status
+                    if (isCorrect && option === currentQuestion.correctAnswer) {
+                         // Highlight Correct Answer Green
+                         variantClass = "border-green-500 bg-green-50 text-green-700";
+                         numberClass = "bg-green-200 text-green-800";
+                         icon = <CheckCircle2 className="h-5 w-5 text-green-600" />;
+                    } else if (isWrong && isSelected) {
+                         // Highlight Wrong Selection Red
+                         variantClass = "border-red-500 bg-red-50 text-red-700";
+                         numberClass = "bg-red-200 text-red-800";
+                         icon = <XCircle className="h-5 w-5 text-red-600" />;
+                    } else if (isSelected) {
+                         // Highlight Selected (Before Submit)
+                         variantClass = "border-blue-500 bg-blue-50 text-blue-700";
+                         numberClass = "bg-blue-200 text-blue-800";
+                    }
+
                     return (
                         <div 
                             key={index}
-                            onClick={() => quiz.handleAnswerSelect(option)}
+                            // Only allow selection if not locked
+                            onClick={() => !isLocked && quiz.handleOptionSelect(option)}
                             className={cn(
-                                "p-3 border-2 rounded-lg cursor-pointer transition-all flex justify-between items-center",
+                                "p-3 border-2 rounded-lg transition-all flex justify-between items-center",
+                                isLocked ? "cursor-default" : "cursor-pointer", 
                                 variantClass,
-                                isAnswerCorrect && !isSelected && "opacity-50 pointer-events-none"
+                                // Dim unselected options when submitted
+                                (isSubmitted || isTimeUp) && !isSelected && option !== currentQuestion.correctAnswer && "opacity-50"
                             )}
                         >
                             <div className="flex items-center gap-3">
@@ -197,13 +206,75 @@ function QuizContent() {
                     );
                 })}
              </div>
+
+             {/* --- STATUS MESSAGES --- */}
+
+             {/* 1. Time Up Message */}
+             {isTimeUp && (
+                <div className="mt-4 flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-md animate-in slide-in-from-top-1">
+                    <Clock className="h-5 w-5" />
+                    <span className="font-medium">Time&apos;s Up! You ran out of time.</span>
+                </div>
+             )}
+
+             {/* 2. Wrong Answer Message */}
+             {isWrong && (
+                <div className="mt-4 flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-md animate-in slide-in-from-top-1">
+                    <AlertCircle className="h-5 w-5" />
+                    <span className="font-medium">Incorrect answer. Try again!</span>
+                </div>
+             )}
+
+             {/* 3. Correct Answer Solution */}
+             {isCorrect && (
+               <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 animate-in slide-in-from-bottom-2 fade-in duration-300">
+                  <div className="flex items-center gap-2 mb-2 text-blue-800 font-semibold">
+                      <Lightbulb className="h-5 w-5 text-yellow-500" />
+                      <span>Explanation</span>
+                  </div>
+                  <p className="text-sm text-blue-700 leading-relaxed">
+                    {currentQuestion.solution}
+                  </p>
+               </div>
+             )}
+
           </CardContent>
-          <CardFooter className="justify-end pt-2 pb-6">
-             {isAnswerCorrect && (
-                 <Button onClick={quiz.handleNextQuestion} className="bg-blue-600 hover:bg-blue-700 animate-in fade-in slide-in-from-bottom-2">
-                    Next Question
+
+          {/* --- FOOTER BUTTONS --- */}
+          <CardFooter className="justify-end pt-2 pb-6 gap-3">
+             
+             {/* SUBMIT BUTTON: Show only when an answer is selected but not submitted */}
+             {!isSubmitted && !isTimeUp && (
+                 <Button 
+                    onClick={quiz.handleSubmit} 
+                    disabled={!selectedAnswer}
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 animate-in fade-in"
+                 >
+                    Submit Answer
                  </Button>
              )}
+
+             {/* RETRY BUTTON: Show when Wrong OR Time Up */}
+             {(isWrong || isTimeUp) && (
+                 <Button 
+                    onClick={quiz.handleRetry} 
+                    variant="secondary"
+                    className="w-full sm:w-auto animate-in fade-in flex gap-2"
+                 >
+                    <RotateCcw className="h-4 w-4" /> Retry Question
+                 </Button>
+             )}
+
+             {/* NEXT BUTTON: Show only when Correct */}
+             {isCorrect && (
+                 <Button 
+                    onClick={quiz.handleNextQuestion} 
+                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 animate-in fade-in flex gap-2"
+                 >
+                    Next Question <ArrowRight className="h-4 w-4" />
+                 </Button>
+             )}
+
           </CardFooter>
         </Card>
       </div>
@@ -211,7 +282,6 @@ function QuizContent() {
   );
 }
 
-// --- 2. Wrap it in Suspense for the Default Export ---
 export default function QuizPage() {
   return (
     <Suspense fallback={

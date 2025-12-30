@@ -1,11 +1,11 @@
 // src/types/quiz.ts
 
-// --- 1. The Clean UI Types (Kept simple for the UI) ---
 export interface Question {
   id: string;
   question: string;
   options: string[];
   correctAnswer: string;
+  solution: string; // <--- ADD THIS
 }
 
 export interface QuizState {
@@ -16,7 +16,6 @@ export interface QuizState {
   answers: Record<number, string>;
 }
 
-// --- 2. The Raw API Response Types (Updated to match your JSON) ---
 export interface ApiOption {
   _id: string;
   text: string;
@@ -27,16 +26,12 @@ export interface ApiQuestion {
   _id: string;
   text: string;           
   type: string;           
-  
-  // The options are in this specific array
   optionOrdering: ApiOption[]; 
-
-  // The correct answer ID is hidden inside here
   questionInfo: {
     _id: string;
     question: string;
-    solution: string;
-    option: string; // This is the ID of the correct answer
+    solution: string; // This exists in API
+    option: string;
   };
 }
 

@@ -5,11 +5,15 @@ interface UseQuizProps {
   questions: Question[];
 }
 
+const QUESTION_TIMER_SECONDS = 60;
+
 export const useQuiz = ({ questions }: UseQuizProps) => {
   // Game State
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean | null>(null);
+  
+  // Status: 'idle' (start), 'correct', 'wrong', 'time_up'
+  const [status, setStatus] = useState<'idle' | 'correct' | 'wrong' | 'time_up'>('idle');
   const [isCompleted, setIsCompleted] = useState(false);
   
   // Stats
@@ -17,57 +21,79 @@ export const useQuiz = ({ questions }: UseQuizProps) => {
   const [incorrectAttempts, setIncorrectAttempts] = useState(0);
   
   // Timer State
-  const [timeElapsed, setTimeElapsed] = useState(0); // Per question
-  const [totalTime, setTotalTime] = useState(0);     // Whole quiz
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIMER_SECONDS);
+  const [totalTime, setTotalTime] = useState(0);
 
-  // Safety fallback
   const currentQuestion = questions[currentIndex] || null;
   const totalQuestions = questions.length;
 
   // --- TIMER LOGIC ---
-
-  // Effect 1: Reset PER-QUESTION timer when index changes
   useEffect(() => {
-    setTimeElapsed(0);
+    // Reset state when index changes
+    setTimeLeft(QUESTION_TIMER_SECONDS);
+    setStatus('idle');
+    setSelectedAnswer(null);
   }, [currentIndex]);
 
-  // Effect 2: Run the timer interval (Ticks both counters)
   useEffect(() => {
-    if (isCompleted || totalQuestions === 0) return;
+    if (isCompleted || !currentQuestion || status === 'correct') return;
+
+    // Handling Time Up Logic
+    if (timeLeft <= 0) {
+      if (status !== 'time_up' && status !== 'correct') {
+         setStatus('time_up');
+         setIncorrectAttempts((prev) => prev + 1); // Count as mistake
+      }
+      return;
+    }
 
     const timer = setInterval(() => {
-      setTimeElapsed((prev) => prev + 1);
+      setTimeLeft((prev) => prev - 1);
       setTotalTime((prev) => prev + 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isCompleted, totalQuestions]);
+  }, [isCompleted, currentQuestion, status, timeLeft]);
 
-  // --- END TIMER LOGIC ---
+  // --- HANDLERS ---
 
-  const handleAnswerSelect = (answer: string) => {
-    if (!currentQuestion) return;
-    if (isAnswerCorrect === true) return;
-
-    setSelectedAnswer(answer);
+  // 1. Just select the option (Visual only)
+  const handleOptionSelect = (answer: string) => {
+    if (status === 'correct' || status === 'time_up') return; // Locked
+    // If already submitted wrong, don't allow changing unless retry clicked? 
+    // Usually standard is: must click retry to unlock.
+    if (status === 'wrong') return; 
     
-    const cleanAnswer = answer.trim();
+    setSelectedAnswer(answer);
+  };
+
+  // 2. Submit Button Logic
+  const handleSubmit = () => {
+    if (!selectedAnswer || !currentQuestion) return;
+
+    const cleanAnswer = selectedAnswer.trim();
     const cleanCorrect = currentQuestion.correctAnswer.trim();
 
     if (cleanAnswer === cleanCorrect) {
-      setIsAnswerCorrect(true);
+      setStatus('correct');
       setScore((prev) => prev + 1);
     } else {
-      setIsAnswerCorrect(false);
+      setStatus('wrong');
       setIncorrectAttempts((prev) => prev + 1);
     }
   };
 
+  // 3. Retry Button Logic (Resets only the current question)
+  const handleRetry = () => {
+    setStatus('idle');
+    setSelectedAnswer(null);
+    setTimeLeft(QUESTION_TIMER_SECONDS); // Reset timer for the retry
+  };
+
+  // 4. Next Question Logic
   const handleNextQuestion = () => {
     if (currentIndex + 1 < totalQuestions) {
       setCurrentIndex((prev) => prev + 1);
-      setSelectedAnswer(null);
-      setIsAnswerCorrect(null);
     } else {
       setIsCompleted(true);
     }
@@ -77,10 +103,10 @@ export const useQuiz = ({ questions }: UseQuizProps) => {
     setCurrentIndex(0);
     setScore(0);
     setIncorrectAttempts(0);
-    setIsAnswerCorrect(null);
+    setStatus('idle');
     setSelectedAnswer(null);
     setIsCompleted(false);
-    setTimeElapsed(0);
+    setTimeLeft(QUESTION_TIMER_SECONDS);
     setTotalTime(0);
   }, []);
 
@@ -89,13 +115,15 @@ export const useQuiz = ({ questions }: UseQuizProps) => {
     currentIndex,
     totalQuestions,
     selectedAnswer,
-    isAnswerCorrect,
+    status, // Exported status instead of booleans
     isCompleted,
     score,
     incorrectAttempts,
-    timeElapsed,
-    totalTime, // Exported new state
-    handleAnswerSelect,
+    timeLeft,
+    totalTime,
+    handleOptionSelect,
+    handleSubmit,
+    handleRetry,
     handleNextQuestion,
     resetQuiz
   };
