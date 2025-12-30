@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertCircle, CheckCircle2, XCircle, Timer, RotateCcw, Trophy, Target, Clock, AlertTriangle, Lightbulb, ArrowRight } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, XCircle, Timer, RotateCcw, Trophy, Target, Clock, AlertTriangle, Lightbulb, PlayCircle, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Helper for Timer Display
@@ -110,15 +110,21 @@ function QuizContent() {
   }
 
   // --- MAIN QUIZ UI ---
-  const { currentQuestion, status, selectedAnswer, timeElapsed } = quiz;
+  const { currentQuestion, status, selectedAnswer, timeLeft } = quiz;
   const progressPercentage = ((quiz.currentIndex + 1) / quiz.totalQuestions) * 100;
 
   if (!currentQuestion) return null;
 
   // Visual Helper States
+  const isTimeUp = status === 'time_up';
   const isCorrect = status === 'correct';
   const isWrong = status === 'wrong';
   const isSubmitted = isCorrect || isWrong;
+  const isLocked = isSubmitted || isTimeUp;
+
+  // Timer Color Logic
+  const timerVariant = timeLeft <= 10 ? "destructive" : "secondary";
+  const timerBg = timeLeft <= 10 ? "bg-red-100 text-red-700" : "";
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 flex flex-col items-center">
@@ -132,10 +138,10 @@ function QuizContent() {
                 </span>
                 <Progress value={progressPercentage} className="h-2" />
             </div>
-            {/* Count Up Timer */}
-            <Badge variant="secondary" className="px-3 py-1 flex gap-2 text-lg">
+            {/* Timer Badge */}
+            <Badge variant={timerVariant} className={cn("px-3 py-1 flex gap-2 text-lg transition-colors", timerBg)}>
                 <Timer className="h-4 w-4" /> 
-                {formatTime(timeElapsed)}
+                {formatTime(timeLeft)}
             </Badge>
         </div>
 
@@ -158,17 +164,17 @@ function QuizContent() {
 
                     // Styling Logic based on Status
                     if (isCorrect && option === currentQuestion.correctAnswer) {
-                         // Correct State: Highlight Answer Green
+                         // Highlight Correct Answer Green
                          variantClass = "border-green-500 bg-green-50 text-green-700";
                          numberClass = "bg-green-200 text-green-800";
                          icon = <CheckCircle2 className="h-5 w-5 text-green-600" />;
                     } else if (isWrong && isSelected) {
-                         // Wrong State: Highlight User Selection Red
+                         // Highlight Wrong Selection Red
                          variantClass = "border-red-500 bg-red-50 text-red-700";
                          numberClass = "bg-red-200 text-red-800";
                          icon = <XCircle className="h-5 w-5 text-red-600" />;
                     } else if (isSelected) {
-                         // Selection State (Before Submit)
+                         // Highlight Selected (Before Submit)
                          variantClass = "border-blue-500 bg-blue-50 text-blue-700";
                          numberClass = "bg-blue-200 text-blue-800";
                     }
@@ -176,13 +182,14 @@ function QuizContent() {
                     return (
                         <div 
                             key={index}
-                            onClick={() => !isCorrect && quiz.handleOptionSelect(option)}
+                            // Only allow selection if not locked
+                            onClick={() => !isLocked && quiz.handleOptionSelect(option)}
                             className={cn(
                                 "p-3 border-2 rounded-lg transition-all flex justify-between items-center",
-                                isCorrect ? "cursor-default" : "cursor-pointer", 
+                                isLocked ? "cursor-default" : "cursor-pointer", 
                                 variantClass,
                                 // Dim unselected options when submitted
-                                isSubmitted && !isSelected && option !== currentQuestion.correctAnswer && "opacity-50"
+                                (isSubmitted || isTimeUp) && !isSelected && option !== currentQuestion.correctAnswer && "opacity-50"
                             )}
                         >
                             <div className="flex items-center gap-3">
@@ -202,7 +209,15 @@ function QuizContent() {
 
              {/* --- STATUS MESSAGES --- */}
 
-             {/* 1. Wrong Answer Message */}
+             {/* 1. Time Up Message */}
+             {isTimeUp && (
+                <div className="mt-4 flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-md animate-in slide-in-from-top-1">
+                    <Clock className="h-5 w-5" />
+                    <span className="font-medium">Time&apos;s Up! You ran out of time.</span>
+                </div>
+             )}
+
+             {/* 2. Wrong Answer Message */}
              {isWrong && (
                 <div className="mt-4 flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-md animate-in slide-in-from-top-1">
                     <AlertCircle className="h-5 w-5" />
@@ -210,7 +225,7 @@ function QuizContent() {
                 </div>
              )}
 
-             {/* 2. Correct Answer Solution */}
+             {/* 3. Correct Answer Solution */}
              {isCorrect && (
                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 animate-in slide-in-from-bottom-2 fade-in duration-300">
                   <div className="flex items-center gap-2 mb-2 text-blue-800 font-semibold">
@@ -228,8 +243,8 @@ function QuizContent() {
           {/* --- FOOTER BUTTONS --- */}
           <CardFooter className="justify-end pt-2 pb-6 gap-3">
              
-             {/* SUBMIT BUTTON: Show when selected but not correct */}
-             {!isCorrect && !isWrong && (
+             {/* SUBMIT BUTTON: Show only when an answer is selected but not submitted */}
+             {!isSubmitted && !isTimeUp && (
                  <Button 
                     onClick={quiz.handleSubmit} 
                     disabled={!selectedAnswer}
@@ -239,8 +254,8 @@ function QuizContent() {
                  </Button>
              )}
 
-             {/* RETRY BUTTON: Show when Wrong */}
-             {isWrong && (
+             {/* RETRY BUTTON: Show when Wrong OR Time Up */}
+             {(isWrong || isTimeUp) && (
                  <Button 
                     onClick={quiz.handleRetry} 
                     variant="secondary"
