@@ -36,24 +36,30 @@ export const useQuiz = ({ questions }: UseQuizProps) => {
   }, [currentIndex]);
 
   useEffect(() => {
-    if (isCompleted || !currentQuestion || status === 'correct') return;
-
-    // Handling Time Up Logic
-    if (timeLeft <= 0) {
-      if (status !== 'time_up' && status !== 'correct') {
-         setStatus('time_up');
-         setIncorrectAttempts((prev) => prev + 1); // Count as mistake
-      }
-      return;
-    }
+    // Don't run timer if completed, no question, already correct, or already timed out
+    if (isCompleted || !currentQuestion || status === 'correct' || status === 'time_up') return;
 
     const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
+      setTimeLeft((prev) => {
+        // Check if time is about to run out (<= 1 because we are about to subtract 1)
+        if (prev <= 1) {
+          clearInterval(timer);
+          
+          // Perform state updates for Time Up inside the callback
+          setStatus('time_up');
+          setIncorrectAttempts((p) => p + 1);
+          
+          return 0;
+        }
+        return prev - 1;
+      });
+
       setTotalTime((prev) => prev + 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isCompleted, currentQuestion, status, timeLeft]);
+    // Removed 'timeLeft' from dependencies to prevent effect re-running every second
+  }, [isCompleted, currentQuestion, status]); 
 
   // --- HANDLERS ---
 
