@@ -1,65 +1,156 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { BrainCircuit } from "lucide-react";
+
+// Define the Schema
+const startQuizSchema = z.object({
+  subject: z.string({
+    message: "Please select a subject.",
+  }).min(1, "Please select a subject."), // Ensures empty string triggers error
+  
+  questionCount: z.enum(["5", "10", "15"], {
+    message: "Please select the number of questions.",
+  }),
+});
+
+type StartQuizValues = z.infer<typeof startQuizSchema>;
+
+// Subject Options
+const SUBJECTS = [
+  "Class 10 - English",
+  "Class 10 - Mathematics",
+  "Class 10 - Science",
+  "Class 10 - Social Science",
+];
+
+export default function StartScreen() {
+  const router = useRouter();
+
+  const form = useForm<StartQuizValues>({
+    resolver: zodResolver(startQuizSchema),
+    // FIX: Initialize default values to prevent "uncontrolled input" errors
+    defaultValues: {
+      subject: "", 
+      questionCount: "5",
+    },
+  });
+
+  function onSubmit(data: StartQuizValues) {
+    const params = new URLSearchParams({
+      subject: data.subject,
+      count: data.questionCount,
+    });
+    
+    router.push(`/quiz?${params.toString()}`);
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-md shadow-lg border-t-4 border-t-blue-600">
+        <CardHeader className="text-center">
+          <div className="mx-auto bg-blue-100 p-3 rounded-full w-fit mb-2">
+            <BrainCircuit className="w-8 h-8 text-blue-600" />
+          </div>
+          <CardTitle className="text-2xl font-bold text-slate-800">Welcome to Edzy Quiz</CardTitle>
+          <CardDescription>
+            Test your knowledge! Select a subject and question limit to begin.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              
+              {/* Subject Selection */}
+              <FormField
+                control={form.control}
+                name="subject"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subject</FormLabel>
+                    {/* FIX: Bind 'value' explicitly so React Hook Form controls the input */}
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a subject..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SUBJECTS.map((subject) => (
+                          <SelectItem key={subject} value={subject}>
+                            {subject}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Question Count Selection */}
+              <FormField
+                control={form.control}
+                name="questionCount"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Number of Questions</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex space-x-4"
+                      >
+                        {["5", "10", "15"].map((count) => (
+                          <FormItem key={count} className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value={count} />
+                            </FormControl>
+                            <Label className="font-normal cursor-pointer">
+                              {count} Questions
+                            </Label>
+                          </FormItem>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" size="lg">
+                Start Quiz
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+        <CardFooter className="justify-center text-xs text-slate-400">
+          Edzy Frontend Hackathon Task 3
+        </CardFooter>
+      </Card>
     </div>
   );
 }
