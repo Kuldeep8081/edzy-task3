@@ -189,7 +189,7 @@ function QuizContent() {
                                 isLocked ? "cursor-default" : "cursor-pointer", 
                                 variantClass,
                                 // Dim unselected options when submitted
-                                (isSubmitted || isTimeUp) && !isSelected && option !== currentQuestion.correctAnswer && "opacity-50"
+                                (isSubmitted || isTimeUp) && !isSelected &&  "opacity-50"
                             )}
                         >
                             <div className="flex items-center gap-3">
